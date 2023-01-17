@@ -16,6 +16,21 @@ fn makeObject() Object {
     return Object{ .object_type = ObjectType.FISH, .x = 0.0, .y = 0.0, .spr = 4, .draw = true };
 }
 
+const AIUpdate = struct {
+    dx: f32,
+    dy: f32,
+
+};
+
+fn enemyAI(player_x: f32, player_y: f32, object: Object) AIUpdate {
+    _ = player_x;
+    _ = player_y;
+    _ = object;
+    return .{
+        .dx = 0.1, .dy = -0.1
+    };
+}
+
 fn pointInBox(x: f32, y: f32, bx: f32, by: f32, bw: f32, bh: f32) bool {
     return (x >= bx and x <= bx + bw and y >= by and y <= by + bh);
 }
@@ -34,22 +49,6 @@ fn boxIntersect(x1: f32, y1: f32, w1: f32, h1: f32, x2: f32, y2: f32, w2: f32, h
         pointInBox(x2, y2 + h2, x1, y1, w1, h1) or
         pointInBox(x2 + w2, y2 + h2, x1, y1, w1, h1));
 }
-
-const AIUpdate = struct {
-    dx: f32,
-    dy: f32,
-
-};
-
-fn enemyAI(player_x: f32, player_y: f32, object: Object) AIUpdate {
-    _ = player_x;
-    _ = player_y;
-    _ = object;
-    return .{
-        .dx = 0.1, .dy = -0.1
-    };
-}
-
 
 pub const Game = struct {
     x: f32 = 30.0,
