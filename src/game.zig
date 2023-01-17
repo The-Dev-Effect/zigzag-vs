@@ -13,15 +13,23 @@ const EnemyType = enum {
 // const Object = struct { object_type: ObjectType, x: f32 = 0, y: f32 = 0, spr: u32 = 4, draw: bool = true };
 
 const FishState = struct {
+    // health: int = 1,
     saw_bubbles: bool = false
 };
 
 const RoombaState = struct {
+    // health: int = 5,
     visible: bool = true
 };
 
+const AmoebaState = struct {
+    // health: int = 20,
+    visible: bool = true,
+    angerState: u32 = 11
+};
+
 const Enemy = struct { enemy_type: EnemyType, x: f32 = 0, y: f32 = 0, spr: u32 = 4, draw: bool = true,
-    fish_state: FishState = .{}, roomba_state: RoombaState = .{} };
+    fish_state: FishState = .{}, roomba_state: RoombaState = .{} , amoeba_state: AmoebaState = .{} };
 
 
 const NUM_ENEMIES = 5000;
@@ -54,13 +62,21 @@ const AIUpdate = struct {
     dy: f32,
 };
 
-fn enemyAI(player_x: f32, player_y: f32, enemy: Enemy) AIUpdate {
-    _ = player_x;
-    _ = player_y;
-    _ = enemy;
-    return .{
-        .dx = 0.1, .dy = -0.1
+fn enemyAI(player_x: f32, player_y: f32, enemy: *Enemy) AIUpdate {
+
+    var target_x = player_x - enemy.x;
+    var target_y = player_y - enemy.y;
+    
+    const scale: f32 = switch (enemy.enemy_type) {
+        EnemyType.FISH => 1.0 / (std.math.sqrt(target_x * target_x + target_y * target_y) + 0.0001),
+        EnemyType.ROOMBA => 0.5 / (std.math.sqrt(target_x * target_x + target_y * target_y) + 0.0001),
+        EnemyType.AMOEBA => 0.1 / (std.math.sqrt(target_x * target_x + target_y * target_y) + 0.0001)
     };
+
+    const x_vel = target_x * scale;
+    const y_vel = target_y * scale;
+
+    return .{.dx = x_vel, .dy = y_vel};
 
 }
 
@@ -218,7 +234,7 @@ pub const Game = struct {
         self.y += dy;
 
         for (self.enemies) |*o| {
-            var info = enemyAI(self.x, self.y, o.*);
+            var info = enemyAI(self.x, self.y, o);
             //info.dx = (self.rnd.random().float(f32) - 0.5) * 4.0;
             //info.dy = (self.rnd.random().float(f32) - 0.5) * 4.0;
 
@@ -235,7 +251,6 @@ pub const Game = struct {
             o.*.y += info.dy;
 
             if (boxIntersect(self.x, self.y, 8.0, 8.0, o.*.x, o.*.y, 8.0, 8.0)) {
-                o.*.spr = 5;
                 o.*.draw = false;
             }
         }
