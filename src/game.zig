@@ -4,13 +4,10 @@ const ApiTypes = @import("api_modules.zig");
 
 const RndGen = std.rand.DefaultPrng;
 
-const ObjectType = enum {
-    FISH,
-    ROOMBA
-};
+const ObjectType = enum { FISH, ROOMBA };
 const Object = struct { object_type: ObjectType, x: f32 = 0, y: f32 = 0, spr: u32 = 4, draw: bool = true };
 
-const NUM_OBJECTS = 5000;
+const NUM_OBJECTS = 500;
 
 fn makeObject() Object {
     return Object{ .object_type = ObjectType.FISH, .x = 0.0, .y = 0.0, .spr = 4, .draw = true };
@@ -38,20 +35,22 @@ fn boxIntersect(x1: f32, y1: f32, w1: f32, h1: f32, x2: f32, y2: f32, w2: f32, h
 const AIUpdate = struct {
     dx: f32,
     dy: f32,
-
 };
 
 fn enemyAI(player_x: f32, player_y: f32, object: Object) AIUpdate {
     _ = player_x;
     _ = player_y;
     _ = object;
-    return .{
-        .dx = 0.1, .dy = -0.1
-    };
+    return .{ .dx = 0.1, .dy = -0.1 };
 }
 
+const PlayerAnimation = struct {
+    forward: bool = true,
+    walk_cycle: u32 = 0, // 0 - 16 standing, 16 - 32 - left, 32 - 48 right.
+};
 
 pub const Game = struct {
+    player_animation: PlayerAnimation = .{},
     x: f32 = 30.0,
     y: f32 = 30.0,
     sprite: u32 = 2,
@@ -86,9 +85,9 @@ pub const Game = struct {
         // Place the birds on the grass.
         for (objects) |*o| {
             // Don't place the birds on obstacles.
-            const object_type: ObjectType = switch(rnd.random().int(u32) % 100) {
+            const object_type: ObjectType = switch (rnd.random().int(u32) % 100) {
                 0...50 => ObjectType.FISH,
-                else => ObjectType.ROOMBA
+                else => ObjectType.ROOMBA,
             };
             o.*.object_type = object_type;
 
@@ -153,15 +152,11 @@ pub const Game = struct {
 
     // }
 
-
-
-    fn moveSpeedEnemy() void { // 
+    fn moveSpeedEnemy() void { //
 
     }
 
-    fn circleAttackEnemy() void {
-
-    }
+    fn circleAttackEnemy() void {}
 
     pub fn update(self: *Game, api: *Api.Api) void {
         var dx: f32 = 0;
@@ -182,6 +177,20 @@ pub const Game = struct {
 
         // Our game objects are really 7x7 so they can fit into the cracks of the tile.
         self.worldMove(api, self.x, self.y, 7.0, 7.0, &dx, &dy);
+
+        // Update the player animation state.
+
+        if (dx != 0 or dy != 0) {
+            self.player_animation.walk_cycle = 1 + (self.player_animation.walk_cycle + 1) % 48;
+        } else {
+            self.player_animation.walk_cycle = 0;
+        }
+
+        if (dy > 0.0) {
+            self.player_animation.forward = true;
+        } else if (dy < 0.0) {
+            self.player_animation.forward = false;
+        }
 
         self.x += dx;
         self.y += dy;
@@ -244,12 +253,49 @@ pub const Game = struct {
             if (o.draw) {
                 const spr: u32 = switch (o.object_type) {
                     ObjectType.FISH => 4,
-                    ObjectType.ROOMBA => 8
+                    ObjectType.ROOMBA => 8,
                 };
                 api.spr(spr, o.x, o.y, 8.0, 8.0);
             }
         }
-        api.spr(self.sprite, self.x, self.y, 8.0, 8.0);
         //api.map(0, 0, 0, 0, 256, 256, 1);
+        self.drawRyan(api);
+    }
+
+    fn drawRyan(self: Game, api: *Api.Api) void {
+        const walkdiff: u32 = switch (self.player_animation.walk_cycle) {
+            0 => 1,
+            1...24 => 0,
+            else => 2,
+        };
+
+        const leftarmdiff: u32 = switch (self.player_animation.walk_cycle) {
+            0 => 1,
+            1...24 => 1,
+            else => 0,
+        };
+
+        const rightarmdiff: u32 = switch (self.player_animation.walk_cycle) {
+            0 => 0,
+            1...24 => 0,
+            else => 1,
+        };
+        const forwarddiff: u32 = switch (self.player_animation.forward) {
+            true => 0,
+            false => 1,
+        };
+
+        // draw the head.
+        api.spr(50 + forwarddiff, self.x, self.y - 16.0, 8.0, 8.0);
+
+        // The body
+        api.spr(50 + 16, self.x, self.y - 8.0, 8.0, 8.0);
+
+        // The arms.
+        api.spr(48 + 16 + leftarmdiff, self.x - 8.0, self.y - 8.0, 8.0, 8.0);
+        api.spr(52 + 16 + rightarmdiff, self.x + 8.0, self.y - 8.0, 8.0, 8.0);
+
+        // The legs depend on the wlak cycle
+        api.spr(49 + 16 * 2 + walkdiff, self.x, self.y, 8.0, 8.0);
     }
 };
