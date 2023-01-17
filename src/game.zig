@@ -4,12 +4,16 @@ const ApiTypes = @import("api_modules.zig");
 
 const RndGen = std.rand.DefaultPrng;
 
-const Object = struct { x: f32 = 0, y: f32 = 0, spr: u32 = 4, draw: bool = true };
+const ObjectType = enum {
+    FISH,
+    ROOMBA
+};
+const Object = struct { object_type: ObjectType, x: f32 = 0, y: f32 = 0, spr: u32 = 4, draw: bool = true };
 
 const NUM_OBJECTS = 5000;
 
 fn makeObject() Object {
-    return Object{ .x = 0.0, .y = 0.0, .spr = 4, .draw = true };
+    return Object{ .object_type = ObjectType.FISH, .x = 0.0, .y = 0.0, .spr = 4, .draw = true };
 }
 
 fn pointInBox(x: f32, y: f32, bx: f32, by: f32, bw: f32, bh: f32) bool {
@@ -30,6 +34,22 @@ fn boxIntersect(x1: f32, y1: f32, w1: f32, h1: f32, x2: f32, y2: f32, w2: f32, h
         pointInBox(x2, y2 + h2, x1, y1, w1, h1) or
         pointInBox(x2 + w2, y2 + h2, x1, y1, w1, h1));
 }
+
+const AIUpdate = struct {
+    dx: f32,
+    dy: f32,
+
+};
+
+fn enemyAI(player_x: f32, player_y: f32, object: Object) AIUpdate {
+    _ = player_x;
+    _ = player_y;
+    _ = object;
+    return .{
+        .dx = 0.1, .dy = -0.1
+    };
+}
+
 
 pub const Game = struct {
     x: f32 = 30.0,
@@ -66,6 +86,12 @@ pub const Game = struct {
         // Place the birds on the grass.
         for (objects) |*o| {
             // Don't place the birds on obstacles.
+            const object_type: ObjectType = switch(rnd.random().int(u32) % 100) {
+                0...50 => ObjectType.FISH,
+                else => ObjectType.ROOMBA
+            };
+            o.*.object_type = object_type;
+
             while (true) {
                 var o_x = rnd.random().int(u32) % 100;
                 var o_y = rnd.random().int(u32) % 100;
@@ -123,6 +149,20 @@ pub const Game = struct {
         }
     }
 
+    // pub fn updateEnemyAI(obj) void {
+
+    // }
+
+
+
+    fn moveSpeedEnemy() void { // 
+
+    }
+
+    fn circleAttackEnemy() void {
+
+    }
+
     pub fn update(self: *Game, api: *Api.Api) void {
         var dx: f32 = 0;
         var dy: f32 = 0;
@@ -147,20 +187,21 @@ pub const Game = struct {
         self.y += dy;
 
         for (self.objects) |*o| {
-            var o_dx = (self.rnd.random().float(f32) - 0.5) * 2.0;
-            var o_dy = (self.rnd.random().float(f32) - 0.5) * 2.0;
+            var info = enemyAI(self.x, self.y, o.*);
+            //info.dx = (self.rnd.random().float(f32) - 0.5) * 4.0;
+            //info.dy = (self.rnd.random().float(f32) - 0.5) * 4.0;
 
-            var target_x = self.x - o.*.x;
-            var target_y = self.y - o.*.y;
+            //var target_x = self.x - 0; //o.*.x;
+            //var target_y = self.y - 0; //o.*.y;
 
-            const scale = 1.0 / (std.math.sqrt(target_x * target_x + target_y * target_y) + 0.0001);
+            //const scale = 1.0 / (std.math.sqrt(target_x * target_x + target_y * target_y) + 0.0001);
 
-            o_dx += target_x * scale;
-            o_dy += target_y * scale;
+            //o_dx += target_x * scale;
+            //o_dy += target_y * scale;
 
-            self.worldMove(api, o.*.x, o.*.y, 7.0, 7.0, &o_dx, &o_dy);
-            o.*.x += o_dx;
-            o.*.y += o_dy;
+            self.worldMove(api, o.*.x, o.*.y, 7.0, 7.0, &info.dx, &info.dy);
+            o.*.x += info.dx;
+            o.*.y += info.dy;
 
             if (boxIntersect(self.x, self.y, 8.0, 8.0, o.*.x, o.*.y, 8.0, 8.0)) {
                 o.*.spr = 5;
@@ -201,11 +242,14 @@ pub const Game = struct {
 
         for (self.objects) |o| {
             if (o.draw) {
-                api.spr(o.spr, o.x, o.y, 8.0, 8.0);
+                const spr: u32 = switch (o.object_type) {
+                    ObjectType.FISH => 4,
+                    ObjectType.ROOMBA => 8
+                };
+                api.spr(spr, o.x, o.y, 8.0, 8.0);
             }
         }
         api.spr(self.sprite, self.x, self.y, 8.0, 8.0);
-
         //api.map(0, 0, 0, 0, 256, 256, 1);
     }
 };
