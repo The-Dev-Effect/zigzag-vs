@@ -4,16 +4,30 @@ const ApiTypes = @import("api_modules.zig");
 
 const RndGen = std.rand.DefaultPrng;
 
-const ObjectType = enum {
+const EnemyType = enum {
     FISH,
-    ROOMBA
+    ROOMBA, 
+    AMOEBA,
 };
-const Object = struct { object_type: ObjectType, x: f32 = 0, y: f32 = 0, spr: u32 = 4, draw: bool = true };
 
-const NUM_OBJECTS = 5000;
+// const Object = struct { object_type: ObjectType, x: f32 = 0, y: f32 = 0, spr: u32 = 4, draw: bool = true };
 
-fn makeObject() Object {
-    return Object{ .object_type = ObjectType.FISH, .x = 0.0, .y = 0.0, .spr = 4, .draw = true };
+const FishState = struct {
+    saw_bubbles: bool = false
+};
+
+const RoombaState = struct {
+    visible: bool = true
+};
+
+const Enemy = struct { enemy_type: EnemyType, x: f32 = 0, y: f32 = 0, spr: u32 = 4, draw: bool = true,
+    fish_state: FishState = .{}, roomba_state: RoombaState = .{} };
+
+
+const NUM_ENEMIES = 5000;
+
+fn makeEnemy() Enemy {
+    return Enemy{ .enemy_type = EnemyType.FISH, .x = 0.0, .y = 0.0, .spr = 4, .draw = true };
 }
 
 fn pointInBox(x: f32, y: f32, bx: f32, by: f32, bw: f32, bh: f32) bool {
@@ -41,10 +55,10 @@ const AIUpdate = struct {
 
 };
 
-fn enemyAI(player_x: f32, player_y: f32, object: Object) AIUpdate {
+fn enemyAI(player_x: f32, player_y: f32, enemy: Enemy) AIUpdate {
     _ = player_x;
     _ = player_y;
-    _ = object;
+    _ = enemy;
     return .{
         .dx = 0.1, .dy = -0.1
     };
@@ -59,7 +73,7 @@ pub const Game = struct {
     rnd: std.rand.DefaultPrng,
     randomize_count: u32 = 0,
     random_seed: u32 = 0,
-    objects: [NUM_OBJECTS]Object,
+    enemies: [NUM_ENEMIES]Enemy,
 
     pub fn init(api: *Api.Api) Game {
         var rnd = RndGen.init(0);
@@ -81,16 +95,17 @@ pub const Game = struct {
             y = 0;
         }
 
-        var objects = [_]Object{makeObject()} ** NUM_OBJECTS;
+        var enemies = [_]Enemy{makeEnemy()} ** NUM_ENEMIES;
 
         // Place the birds on the grass.
-        for (objects) |*o| {
+        for (enemies) |*o| {
             // Don't place the birds on obstacles.
-            const object_type: ObjectType = switch(rnd.random().int(u32) % 100) {
-                0...50 => ObjectType.FISH,
-                else => ObjectType.ROOMBA
+            const enemy_type: EnemyType = switch(rnd.random().int(u32) % 100) {
+                0...70 => EnemyType.FISH,
+                71...95 => EnemyType.ROOMBA,
+                else => EnemyType.AMOEBA
             };
-            o.*.object_type = object_type;
+            o.*.enemy_type =enemy_type;
 
             while (true) {
                 var o_x = rnd.random().int(u32) % 100;
@@ -103,7 +118,7 @@ pub const Game = struct {
             }
         }
 
-        return .{ .rnd = rnd, .objects = objects };
+        return .{ .rnd = rnd, .enemies = enemies };
     }
 
     pub fn walkableTile(self: Game, api: *Api.Api, x: f32, y: f32) bool {
@@ -186,7 +201,7 @@ pub const Game = struct {
         self.x += dx;
         self.y += dy;
 
-        for (self.objects) |*o| {
+        for (self.enemies) |*o| {
             var info = enemyAI(self.x, self.y, o.*);
             //info.dx = (self.rnd.random().float(f32) - 0.5) * 4.0;
             //info.dy = (self.rnd.random().float(f32) - 0.5) * 4.0;
@@ -240,11 +255,12 @@ pub const Game = struct {
         // draw the map
         api.map(0, 0, 0, 0, 256, 256, 0);
 
-        for (self.objects) |o| {
+        for (self.enemies) |o| {
             if (o.draw) {
-                const spr: u32 = switch (o.object_type) {
-                    ObjectType.FISH => 4,
-                    ObjectType.ROOMBA => 8
+                const spr: u32 = switch (o.enemy_type) {
+                    EnemyType.FISH => 4,
+                    EnemyType.ROOMBA => 8,
+                    EnemyType.AMOEBA => 11
                 };
                 api.spr(spr, o.x, o.y, 8.0, 8.0);
             }
