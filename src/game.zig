@@ -62,7 +62,7 @@ const AIUpdate = struct {
     dy: f32,
 };
 
-fn enemyAI(player_x: f32, player_y: f32, enemy: *Enemy) AIUpdate {
+fn enemyAI(player_x: f32, player_y: f32, enemy: *Enemy, rnd: *rnd) AIUpdate {
 
     var target_x = player_x - enemy.x;
     var target_y = player_y - enemy.y;
@@ -73,8 +73,15 @@ fn enemyAI(player_x: f32, player_y: f32, enemy: *Enemy) AIUpdate {
         EnemyType.AMOEBA => 0.1 / (std.math.sqrt(target_x * target_x + target_y * target_y) + 0.0001)
     };
 
-    const x_vel = target_x * scale;
-    const y_vel = target_y * scale;
+    const noise: f32 = switch (enemy.enemy_type) {
+        EnemyType.FISH => 0,
+        EnemyType.ROOMBA => 2 * rnd.random.float(f32),
+        EnemyType.AMOEBA => rnd.random.float(f32)
+    };
+
+
+    const x_vel = target_x * scale + noise;
+    const y_vel = target_y * scale + noise;
 
     return .{.dx = x_vel, .dy = y_vel};
 
@@ -234,7 +241,7 @@ pub const Game = struct {
         self.y += dy;
 
         for (self.enemies) |*o| {
-            var info = enemyAI(self.x, self.y, o);
+            var info = enemyAI(self.x, self.y, o, self.rnd);
             //info.dx = (self.rnd.random().float(f32) - 0.5) * 4.0;
             //info.dy = (self.rnd.random().float(f32) - 0.5) * 4.0;
 
