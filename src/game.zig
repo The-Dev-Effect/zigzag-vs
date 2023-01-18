@@ -433,6 +433,29 @@ pub const Game = struct {
                     }
                 }  
             }
+
+            //The enemy has collided with one of our myriad bullets!
+            if (o.*.draw) {
+                for (self.bullets) |*b| {
+                    if (!b.draw) {
+                        continue;
+                    } else if (boxIntersect(b.*.x, b.*.y, 8.0, 8.0, o.*.x, o.*.y, 8.0, 8.0)) {
+                        //hurt the enemy. If the enemy is dead, spawn XP
+                        o.*.health -= 5;
+                        if(o.*.health <= 0) {
+                            o.*.draw = false;
+                            for(self.xp) |*xp| {
+                                if(xp.*.draw == false){
+                                    xp.*.x = o.*.x;
+                                    xp.*.y = o.*.y;
+                                    xp.*.draw = true;
+                                    break;
+                                }
+                            }
+                        } 
+                    }
+                }
+            }
         }
 
         for (self.xp) |*xp| {
